@@ -254,6 +254,13 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
 
     @Override
     public void onNestedPreScroll(@NonNull View target, int dx, int dy, @NonNull int[] consumed, int type) {
+        float contentTransY = mLlContent.getTranslationY() - dy;
+
+        if (dy > 0){
+            // 处理上滑
+            
+        }
+
     }
 
     /**
