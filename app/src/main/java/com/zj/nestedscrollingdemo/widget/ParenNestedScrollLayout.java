@@ -3,8 +3,11 @@ package com.zj.nestedscrollingdemo.widget;
 import android.animation.ArgbEvaluator;
 import android.animation.ValueAnimator;
 import android.content.Context;
+import android.os.SystemClock;
 import android.util.AttributeSet;
+import android.util.Log;
 import android.util.TypedValue;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
@@ -17,7 +20,9 @@ import androidx.annotation.Nullable;
 import androidx.core.view.NestedScrollingParent2;
 import androidx.core.view.NestedScrollingParentHelper;
 import androidx.core.view.ViewCompat;
+import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.RecyclerView;
 
 /**
  * @author zhangj
@@ -25,6 +30,7 @@ import androidx.fragment.app.Fragment;
  */
 public class ParenNestedScrollLayout extends FrameLayout implements NestedScrollingParent2 {
 
+    private static final String TAG = "ParenNestedScrollLayout";
     private static final long ANIM_DURATION_FRACTION = 200L;
 
     //Header部分
@@ -254,11 +260,44 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
 
     @Override
     public void onNestedPreScroll(@NonNull View target, int dx, int dy, @NonNull int[] consumed, int type) {
+        // 设置mLlContent平移的距离
         float contentTransY = mLlContent.getTranslationY() - dy;
+        Log.e(TAG, "onNestedPreScroll: dy" + dy);
 
-        if (dy > 0){
+        if (dy > 0) {
             // 处理上滑
-            
+            if (contentTransY >= topBarHeight) {
+                // 当mLlContent滑动在topBar之下时，消费的是dy
+                translationByConsume(mLlContent, contentTransY, consumed, dy);
+            } else {
+                // mLlContent的最大滑动距离不能在topBar之上
+                translationByConsume(mLlContent, topBarHeight, consumed, mLlContent.getTranslationY() - topBarHeight);
+            }
+        }
+
+        if (dy < 0 && !target.canScrollVertically(-1)) {
+            // 下滑时处理Fling，完全折叠时，下滑RecycleView（或NestedScrollView） Fling滚动到列表顶部停止Fling
+            if (type == ViewCompat.TYPE_NON_TOUCH && mLlContent.getTranslationY() == topBarHeight) {
+                return;
+            }
+
+            // 处理下滑
+            if (contentTransY >= topBarHeight && contentTransY <= downEndY) {
+                translationByConsume(mLlContent, contentTransY, consumed, dy);
+            } else {
+                translationByConsume(mLlContent, downEndY, consumed, downEndY - mLlContent.getTranslationY());
+                if (target instanceof RecyclerView) {
+                    RecyclerView recyclerView = (RecyclerView) target;
+                    recyclerView.stopScroll();
+                }
+                if (target instanceof NestedScrollView) {
+                    // 模拟down事件停止滑动，注意会触发onNestedScrollAccepted()
+                    MotionEvent motionEvent = MotionEvent.obtain(SystemClock.uptimeMillis(), SystemClock.uptimeMillis(),
+                            MotionEvent.ACTION_DOWN, 0, 0, 0);
+                    target.onTouchEvent(motionEvent);
+                }
+            }
+
         }
 
     }
@@ -314,5 +353,10 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
             mIvClose.setAlpha(1);
             mIvClose.setVisibility(View.VISIBLE);
         }
+    }
+
+    private void translationByConsume(View view, float translationY, int[] consume, float consumeDy) {
+        consume[1] = (int) consumeDy;
+        view.setTranslationY(translationY);
     }
 }
