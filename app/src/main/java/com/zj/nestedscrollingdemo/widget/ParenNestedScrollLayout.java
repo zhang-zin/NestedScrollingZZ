@@ -17,12 +17,15 @@ import android.widget.ImageView;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.math.MathUtils;
 import androidx.core.view.NestedScrollingParent2;
 import androidx.core.view.NestedScrollingParentHelper;
 import androidx.core.view.ViewCompat;
 import androidx.core.widget.NestedScrollView;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.RecyclerView;
+
+import com.zj.nestedscrollingdemo.R;
 
 /**
  * @author zhangj
@@ -116,7 +119,33 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
     @Override
     protected void onFinishInflate() {
         super.onFinishInflate();
+        mLlContent = findViewById(R.id.cl_content);
+        mCollapsedContent = findViewById(R.id.cl_collapsed_content);
+        mIvSearch = findViewById(R.id.iv_search);
+        mIvShare = findViewById(R.id.iv_share);
+        mIvBack = findViewById(R.id.iv_back);
+        mIvAssemble = findViewById(R.id.iv_assemble);
+        mIvLogo = findViewById(R.id.iv_logo);
+        mVCollect = findViewById(R.id.iv_collect);
+        mTvSearch = findViewById(R.id.tv_search);
+        mTopBar = findViewById(R.id.cl_top_bar);
+        mClCollapsedHeader = findViewById(R.id.cl_collapsed_header);
+        mRvCollapsed = findViewById(R.id.rv_collasped);
+        mIvClose = findViewById(R.id.iv_close);
+        mViewPager = findViewById(R.id.vp);
+        mStl = findViewById(R.id.stl);
+        mShopBar = findViewById(R.id.cl_shop_bar);
 
+        mIvClose.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mLlContent.getTranslationY() == downEndY) {
+                    setAlpha(mIvClose, 0);
+                    mIvClose.setVisibility(GONE);
+//                    restore(ANIM_DURATION_FRACTION);
+                }
+            }
+        });
     }
 
     @Override
@@ -132,15 +161,15 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
         super.onSizeChanged(w, h, oldw, oldh);
-//        shopBarHeight = getResources().getDimension(R.dimen.shop_bar_height);
-//        contentTransY = getResources().getDimension(R.dimen.content_trans_y);
+        shopBarHeight = getResources().getDimension(R.dimen.shop_bar_height);
+        contentTransY = getResources().getDimension(R.dimen.content_trans_y);
         downShopBarTransY = contentTransY + shopBarHeight;
         upAlphaScaleY = contentTransY - dp2px(32);
         upAlphaGradientY = contentTransY - dp2px(64);
         downFlingCutOffY = contentTransY + dp2px(28);
         downCollapsedAlphaY = contentTransY + dp2px(32);
-//        downContentAlphaY = getResources().getDimension(R.dimen.donw_content_alpha_y);
-//        downEndY = getHeight() - getResources().getDimension(R.dimen.iv_close_height);
+        downContentAlphaY = getResources().getDimension(R.dimen.donw_content_alpha_y);
+        downEndY = getHeight() - getResources().getDimension(R.dimen.iv_close_height);
     }
 
     /**
@@ -179,7 +208,7 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
     @Override
     public boolean onStartNestedScroll(@NonNull View child, @NonNull View target, int axes, int type) {
         // 只接受mLlContent内容和垂直滑动
-        return child.getId() == mLlContent.getId() && axes == ViewCompat.SCROLL_AXIS_VERTICAL;
+        return /*child.getId() == mLlContent.getId() &&*/ axes == ViewCompat.SCROLL_AXIS_VERTICAL;
     }
 
     /**
@@ -224,6 +253,11 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
             return;
         }
         // TODO: 2020/7/30 处理滑动结束
+        float downCollapsedAlphaPro = getDownCollapsedAlphaPro();
+        float downContentAlphaPro = getDownContentAlphaPro();
+        if (downCollapsedAlphaPro==0){
+
+        }
 
     }
 
@@ -300,6 +334,30 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
 
         }
 
+        //根据upAlphaScalePro,设置logo、收藏icon缩放，搜索icon、分享icon透明度
+        float upAlphaScalePro = getUpAlphaScalePro();
+        alphaScaleByPro(upAlphaScalePro);
+
+        //根据upAlphaGradientPro,设置topBar背景、返回icon、拼团icon颜色渐变值，搜索框透明度
+        float upAlphaGradientPro = getUpAlphaGradientPro();
+        alphaGradientByPro(upAlphaGradientPro);
+
+        //根据downCollapsedAlphaPro,设置折叠内容透明度
+        float downCollapsedAlphaPro = getDownCollapsedAlphaPro();
+        alphaCollapsedContentByPro(downCollapsedAlphaPro);
+
+        //根据downContentAlphaPro,设置滑动内容、收起按钮的透明度
+        float downContentAlphaPro = getDownContentAlphaPro();
+        alphaContentByPro(downContentAlphaPro);
+
+        //根据downShopBarTransPro,设置购物内容内容位移
+        float downShopBarTransPro = getDownShopBarTransPro();
+        transShopBarByPro(downShopBarTransPro);
+
+        //根据upCollapsedContentTransPro,设置折叠内容位移
+        float upCollapsedContentTransPro = getUpCollapsedContentTransPro();
+        transCollapsedContentByPro(upCollapsedContentTransPro);
+
     }
 
     /**
@@ -359,4 +417,110 @@ public class ParenNestedScrollLayout extends FrameLayout implements NestedScroll
         consume[1] = (int) consumeDy;
         view.setTranslationY(translationY);
     }
+
+    private float getUpAlphaScalePro() {
+        return (contentTransY - MathUtils.clamp(mLlContent.getTranslationY(), upAlphaScaleY, contentTransY))
+                / (contentTransY - upAlphaScaleY);
+    }
+
+    private float getUpAlphaGradientPro() {
+        return (upAlphaScaleY - MathUtils.clamp(mLlContent.getTranslationY(), upAlphaGradientY, upAlphaScaleY))
+                / (upAlphaScaleY - upAlphaGradientY);
+    }
+
+    private float getDownCollapsedAlphaPro() {
+        return (downCollapsedAlphaY - MathUtils.clamp(mLlContent.getTranslationY(), contentTransY, downCollapsedAlphaY))
+                / (downCollapsedAlphaY - contentTransY);
+    }
+
+    private float getDownContentAlphaPro() {
+        return (downEndY - MathUtils.clamp(mLlContent.getTranslationY(), downContentAlphaY, downEndY))
+                / (downEndY - downContentAlphaY);
+    }
+
+    private float getDownShopBarTransPro() {
+        return (downShopBarTransY - MathUtils.clamp(mLlContent.getTranslationY(), contentTransY, downShopBarTransY))
+                / (downShopBarTransY - contentTransY);
+    }
+
+    private float getUpCollapsedContentTransPro() {
+        return (contentTransY - MathUtils.clamp(mLlContent.getTranslationY(), topBarHeight, contentTransY))
+                / (contentTransY - topBarHeight);
+    }
+
+    private void alphaScaleByPro(float upAlphaScalePro) {
+        float alpha = 1 - upAlphaScalePro;
+        float scale = 1 - upAlphaScalePro;
+        setAlpha(mIvSearch, alpha);
+        setAlpha(mIvShare, alpha);
+        setScaleAlpha(mIvLogo, scale, scale, alpha);
+        setScaleAlpha(mVCollect, scale, scale, alpha);
+    }
+
+    private void setAlpha(View view, float alpha) {
+        view.setAlpha(alpha);
+    }
+
+    private void setScale(View view, float scaleY, float scaleX) {
+        view.setScaleY(scaleY);
+        view.setScaleX(scaleX);
+    }
+
+    private void setScaleAlpha(View view, float scaleY, float scaleX, float alpha) {
+        setAlpha(view, alpha);
+        setScale(view, scaleY, scaleX);
+    }
+
+    private void translation(View view, float translationY) {
+        view.setTranslationY(translationY);
+    }
+
+    /**
+     * 根据upAlphaGradientPro,设置topBar背景、返回icon、拼团icon颜色渐变值，搜索框透明度
+     */
+    private void alphaGradientByPro(float upAlphaGradientPro) {
+        setAlpha(mTvSearch, upAlphaGradientPro);
+        int iconColor = (int) iconArgbEvaluator.evaluate(
+                upAlphaGradientPro,
+                getResources().getColor(R.color.white),
+                getResources().getColor(R.color.black));
+
+        int topBarColor = (int) topBarArgbEvaluator.evaluate(
+                upAlphaGradientPro,
+                getResources().getColor(R.color.trans_white),
+                getResources().getColor(R.color.white));
+        mTopBar.setBackgroundColor(topBarColor);
+        mIvBack.getDrawable().mutate().setTint(iconColor);
+        mIvAssemble.getDrawable().mutate().setTint(iconColor);
+    }
+
+    /**
+     * 根据downCollapsedAlphaPro,设置折叠内容透明度
+     */
+    private void alphaCollapsedContentByPro(float downCollapsedAlphaPro) {
+        setAlpha(mClCollapsedHeader, downCollapsedAlphaPro);
+        setAlpha(mRvCollapsed, 1 - downCollapsedAlphaPro);
+    }
+
+    private void alphaContentByPro(float downContentAlphaPro) {
+        setAlpha(mViewPager, downContentAlphaPro);
+        setAlpha(mStl, downContentAlphaPro);
+        setAlpha(mIvClose, 1 - downContentAlphaPro);
+        if (mIvClose.getAlpha() == 0) {
+            mIvClose.setVisibility(GONE);
+        } else {
+            mIvClose.setVisibility(VISIBLE);
+        }
+    }
+
+    private void transShopBarByPro(float downShopBarTransPro) {
+        float shopBarTransY = (1 - downShopBarTransPro) * shopBarHeight;
+        translation(mShopBar, shopBarTransY);
+    }
+
+    private void transCollapsedContentByPro(float upCollapsedContentTransPro) {
+        float collapsedContentTranY = -(upCollapsedContentTransPro * (contentTransY - topBarHeight));
+        translation(mCollapsedContent, collapsedContentTranY);
+    }
+
 }
